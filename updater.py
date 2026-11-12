@@ -44,7 +44,7 @@ resources_dir = os.path.join(main_dir, "resources")
 ignore_ver_file = os.path.join(resources_dir, "ignore_version.txt")
 no_auto_ver_check_file = os.path.join(resources_dir, "no_auto_ver_check.txt")
 
-RELEASES_API_URL = 'https://git.neoneko.org/api/v1/repos/NeoNeko/Cats-Blender-Plugin/releases'
+RELEASES_API_URL = 'https://api.github.com/repos/MaxKruse/Cats-Blender-Plugin/releases'
 
 package_name = __package__
 

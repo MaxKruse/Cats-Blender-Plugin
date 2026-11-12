@@ -65,8 +65,8 @@ languages = []
 verbose = True
 last_loaded_language = None
 translation_branch = f"{bpy.app.version[0]}.{bpy.app.version[1]}"
-translation_repo_api = "https://git.neoneko.org/api/v1/repos/NeoNeko/Cats-Blender-Plugin"
-dictionary_download_link = f"https://git.neoneko.org/NeoNeko/Cats-Blender-Plugin/raw/branch/{translation_branch}/resources/dictionary.json"
+translation_repo_api = "https://api.github.com/repos/MaxKruse/Cats-Blender-Plugin"
+dictionary_download_link = f"https://raw.githubusercontent.com/MaxKruse/Cats-Blender-Plugin/{translation_branch}/resources/dictionary.json"
 DOWNLOAD_TIMEOUT = 15
 _addon_startup_time = None
 

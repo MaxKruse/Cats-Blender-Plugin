@@ -67,6 +67,8 @@ Every subpackage `__init__.py` imports its submodules purely for the `register_w
 - Windows Store Blender and Linux snap/flatpak/packaged Blender builds are unsupported (permission problems) - do not debug those environments.
 - Vendored trees (`mmd_tools_local/`, `wheels/`) are excluded from linting; patching them locally is wrong, use `scripts/vendor_mmd_tools.py`.
 - The updater's in-place update moves files into the extension's own install dir; anything not in the zip but present in the install dir (except dotfiles/`resources/`/`downloads/`) is deleted first.
+- Eye test session state lives in module-scope globals in `tools/eyetracking.py` (`eye_left/right`, `*_data`, `*_rot`); a session is active iff all six are set (`_session_active()`). `scene.eye_mode` is a UI mirror that persists into .blend files but the session does not survive a reload - `sync_eye_mode_on_load` (load_post, registered in `__init__.py`) resets a stale 'TESTING' to 'CREATION' and drops dead session refs. All teardown goes through `_end_session()`; do not add new code that mutates the session globals directly.
+- `FixArmature.execute` tags bones with `cats_orig_name` via `Common.snapshot_bone_identities`; the tag must be cleared with `Common.clear_bone_identity_snapshot` before every return after the snapshot (the early CANCELLED paths included), so it never reaches a saved file or export.
 
 ## Lint / format
 

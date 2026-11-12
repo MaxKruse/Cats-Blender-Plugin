@@ -8,6 +8,7 @@ import math
 import bmesh
 import mathutils
 from typing import Optional, Dict, Tuple
+from bpy.app.handlers import persistent
 
 from collections import OrderedDict
 from random import random
@@ -743,6 +744,91 @@ eye_right_data = None
 eye_left_rot = []
 eye_right_rot = []
 
+# Test session state. A session is active if and only if ALL six vars above are
+# set: StartTestingButton creates them, _end_session() drops them. The state
+# lives in module scope, so it cannot survive a file reload - scene.eye_mode is
+# only a UI mirror and may come back stale from a .blend (see
+# sync_eye_mode_on_load).
+def _session_active():
+    """True while an eye test session is active in this Blender session."""
+    return bool(eye_left and eye_right and eye_left_data and eye_right_data
+                and eye_left_rot and eye_right_rot)
+
+
+def _can_start_testing(context):
+    """Preconditions for starting a test session, shared by StartTestingButton.poll."""
+    armature = Common.get_armature()
+    if not armature:
+        return False
+    if 'LeftEye' not in armature.pose.bones or 'RightEye' not in armature.pose.bones:
+        return False
+    return Common.get_objects().get(context.scene.mesh_name_eye) is not None
+
+
+def _end_session(context):
+    """End the active test session: zero the sliders, clear the pose, restore bone
+    visibility, zero the blink shape keys, then drop the session state. No-op when
+    no session is active (e.g. a stale 'TESTING' mode after a file reload)."""
+    global eye_left, eye_right, eye_left_data, eye_right_data, eye_left_rot, eye_right_rot
+    if not _session_active():
+        return
+
+    # Zero the sliders while the session is still active: the slider update
+    # callbacks then just re-apply the stored base rotations, which the pose
+    # clear below erases again.
+    context.scene.eye_rotation_x = 0
+    context.scene.eye_rotation_y = 0
+
+    armature = Common.get_armature()
+    if not armature:
+        # Armature was deleted mid-session: nothing left to clean up.
+        eye_left = eye_right = eye_left_data = eye_right_data = None
+        eye_left_rot = eye_right_rot = []
+        return
+
+    armature = Common.set_default_stage()
+    Common.switch('POSE')
+    armature.data.pose_position = 'POSE'
+
+    for pb in armature.pose.bones:
+        pb.hide = False
+        pb.select = True
+    bpy.ops.pose.rot_clear()
+    bpy.ops.pose.scale_clear()
+    bpy.ops.pose.transforms_clear()
+    for pb in armature.pose.bones:
+        pb.select = False
+
+    for shape_key in Common.get_objects()[context.scene.mesh_name_eye].data.shape_keys.key_blocks:
+        shape_key.value = 0
+
+    eye_left = eye_right = eye_left_data = eye_right_data = None
+    eye_left_rot = eye_right_rot = []
+
+
+@persistent
+def sync_eye_mode_on_load(_dummy):
+    """The test session state lives in module scope and cannot survive a file
+    reload. Drop any leftover session references (they point into freed
+    datablocks) and reset a persisted 'TESTING' mode to 'CREATION' so the UI
+    matches reality."""
+    global eye_left, eye_right, eye_left_data, eye_right_data, eye_left_rot, eye_right_rot
+    eye_left = eye_right = eye_left_data = eye_right_data = None
+    eye_left_rot = eye_right_rot = []
+    for scene in bpy.data.scenes:
+        if getattr(scene, 'eye_mode', None) == 'TESTING':
+            scene.eye_mode = 'CREATION'
+
+
+def register_load_post_handler():
+    if sync_eye_mode_on_load not in bpy.app.handlers.load_post:
+        bpy.app.handlers.load_post.append(sync_eye_mode_on_load)
+
+
+def unregister_load_post_handler():
+    if sync_eye_mode_on_load in bpy.app.handlers.load_post:
+        bpy.app.handlers.load_post.remove(sync_eye_mode_on_load)
+
 
 @register_wrap
 class StartTestingButton(bpy.types.Operator):
@@ -753,12 +839,7 @@ class StartTestingButton(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        armature = Common.get_armature()
-        if 'LeftEye' in armature.pose.bones:
-            if 'RightEye' in armature.pose.bones:
-                if Common.get_objects().get(context.scene.mesh_name_eye) is not None:
-                    return True
-        return False
+        return _can_start_testing(context)
 
     def execute(self, context):
         armature = Common.set_default_stage()
@@ -772,14 +853,14 @@ class StartTestingButton(bpy.types.Operator):
         eye_left_data = armature.data.bones.get('LeftEye')
         eye_right_data = armature.data.bones.get('RightEye')
 
+        if eye_left is None or eye_right is None or eye_left_data is None or eye_right_data is None:
+            return {'FINISHED'}
+
         # Save initial eye rotations
         eye_left.rotation_mode = 'XYZ'
         eye_left_rot = copy.deepcopy(eye_left.rotation_euler)
         eye_right.rotation_mode = 'XYZ'
         eye_right_rot = copy.deepcopy(eye_right.rotation_euler)
-
-        if eye_left is None or eye_right is None or eye_left_data is None or eye_right_data is None:
-            return {'FINISHED'}
 
         for shape_key in Common.get_objects()[context.scene.mesh_name_eye].data.shape_keys.key_blocks:
             shape_key.value = 0
@@ -813,48 +894,21 @@ class StopTestingButton(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO', 'INTERNAL'}
 
     def execute(self, context):
-        global eye_left, eye_right, eye_left_data, eye_right_data, eye_left_rot, eye_right_rot
-        if eye_left:
-            context.scene.eye_rotation_x = 0
-            context.scene.eye_rotation_y = 0
-
-        if not context.object or context.object.mode != 'POSE':
-            Common.set_default_stage()
-            Common.remove_rigidbodies_global()
-            Common.switch('POSE')
-
-        armature_obj = Common.get_armature()
-        for pb in armature_obj.pose.bones:
-            pb.hide = False
-            pb.select = True
-        bpy.ops.pose.rot_clear()
-        bpy.ops.pose.scale_clear()
-        bpy.ops.pose.transforms_clear()
-        for pb in armature_obj.pose.bones:
-            pb.select = False
-
-        Common.set_default_stage()
-        # armature.data.pose_position = 'REST'
-
-        for shape_key in Common.get_objects()[context.scene.mesh_name_eye].data.shape_keys.key_blocks:
-            shape_key.value = 0
-
-        eye_left = None
-        eye_right = None
-        eye_left_data = None
-        eye_right_data = None
-        eye_left_rot = []
-        eye_right_rot = []
-
+        _end_session(context)
         return {'FINISHED'}
 
 # This gets called by the eye testing sliders
 def set_rotation(self, context):
-    global eye_left, eye_right, eye_left_rot, eye_right_rot
-
-    # Initialize testing mode if not already set up
-    if not eye_left or not eye_right:
-        StartTestingButton.execute(StartTestingButton, context)
+    if not _session_active():
+        # No session in this Blender session. Moving a slider from POSE mode is
+        # the only way to enter testing, so start a session - but only when the
+        # eye bones and mesh exist, otherwise a 'TESTING' mode restored stale
+        # from a .blend would crash the auto-start.
+        if _can_start_testing(context):
+            StartTestingButton.execute(StartTestingButton, context)
+        else:
+            # Heal the stale mode so the UI matches reality.
+            context.scene.eye_mode = 'CREATION'
         return None
 
     # Apply rotations
@@ -876,39 +930,9 @@ def set_rotation(self, context):
 
 
 def stop_testing(self, context):
-        global eye_left, eye_right, eye_left_data, eye_right_data, eye_left_rot, eye_right_rot
-        if not eye_left or not eye_right or not eye_left_data or not eye_right_data or not eye_left_rot or not eye_right_rot:
-            return None
-
-        armature = Common.set_default_stage()
-        Common.switch('POSE')
-        armature.data.pose_position = 'POSE'
-
-        context.scene.eye_rotation_x = 0
-        context.scene.eye_rotation_y = 0
-
-        for pb in armature.data.bones:
-            pb.hide = False
-            pb.select = True
-        bpy.ops.pose.rot_clear()
-        bpy.ops.pose.scale_clear()
-        bpy.ops.pose.transforms_clear()
-        for pb in armature.data.bones:
-            pb.select = False
-
-        armature = Common.set_default_stage()
-        # armature.data.pose_position = 'REST'
-
-        for shape_key in Common.get_objects()[context.scene.mesh_name_eye].data.shape_keys.key_blocks:
-            shape_key.value = 0
-
-        eye_left = None
-        eye_right = None
-        eye_left_data = None
-        eye_right_data = None
-        eye_left_rot = []
-        eye_right_rot = []
-        return None
+    """Update callback for Scene.eye_mode: end the session when the user leaves testing mode."""
+    _end_session(context)
+    return None
 
 
 @register_wrap
@@ -928,25 +952,21 @@ class ResetRotationButton(bpy.types.Operator):
 
     def execute(self, context):
         armature = Common.get_armature()
+        left = armature.pose.bones.get('LeftEye')
+        right = armature.pose.bones.get('RightEye')
+        if not left or not right:
+            return {'CANCELLED'}
 
         context.scene.eye_rotation_x = 0
         context.scene.eye_rotation_y = 0
 
-        global eye_left, eye_right, eye_left_data, eye_right_data
-        eye_left = armature.pose.bones.get('LeftEye')
-        eye_right = armature.pose.bones.get('RightEye')
-        eye_left_data = armature.data.bones.get('LeftEye')
-        eye_right_data = armature.data.bones.get('RightEye')
-
-        eye_left.rotation_mode = 'XYZ'
-        eye_left.rotation_euler[0] = 0
-        eye_left.rotation_euler[1] = 0
-        eye_left.rotation_euler[2] = 0
-
-        eye_right.rotation_mode = 'XYZ'
-        eye_right.rotation_euler[0] = 0
-        eye_right.rotation_euler[1] = 0
-        eye_right.rotation_euler[2] = 0
+        # Use local references: mutating the module session state here would
+        # leave it half-set (without the _rot lists) for the update callbacks.
+        for bone in (left, right):
+            bone.rotation_mode = 'XYZ'
+            bone.rotation_euler[0] = 0
+            bone.rotation_euler[1] = 0
+            bone.rotation_euler[2] = 0
 
         return {'FINISHED'}
 
@@ -1001,12 +1021,6 @@ class AdjustEyesButton(bpy.types.Operator):
                 return {'CANCELLED'}
 
         Common.switch('POSE')
-
-        global eye_left, eye_right, eye_left_data, eye_right_data
-        eye_left = armature.pose.bones.get('LeftEye')
-        eye_right = armature.pose.bones.get('RightEye')
-        eye_left_data = armature.data.bones.get('LeftEye')
-        eye_right_data = armature.data.bones.get('RightEye')
 
         return {'FINISHED'}
 
@@ -1143,8 +1157,8 @@ class ResetEyeTrackingButton(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO', 'INTERNAL'}
 
     def execute(self, context):
-        global eye_left, eye_right, eye_left_data, eye_right_data, eye_left_rot, eye_right_rot
-        eye_left = eye_right = eye_left_data = eye_right_data = None
-        eye_left_rot = eye_right_rot = []
+        # Tear down the session properly (restores bone visibility and clears
+        # the pose) instead of just abandoning the session state.
+        _end_session(context)
         context.scene.eye_mode = 'CREATION'
         return {'FINISHED'}

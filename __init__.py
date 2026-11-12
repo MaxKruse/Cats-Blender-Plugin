@@ -277,6 +277,10 @@ def register():
     # per-file, so a freshly opened file would otherwise override them).
     tools.settings.register_load_post_handler()
 
+    # The eye testing session state cannot survive a file reload, so heal the
+    # persisted eye mode whenever a .blend is opened.
+    tools.eyetracking.register_load_post_handler()
+
     # Kick off the background update check once at startup instead of on every
     # panel redraw.
     updater.check_for_update_background(check_on_startup=True)
@@ -333,6 +337,7 @@ def unregister():
 
     tools.settings.stop_apply_settings_timer()
     tools.settings.unregister_load_post_handler()
+    tools.eyetracking.unregister_load_post_handler()
 
     print("### Unloaded CATS successfully!\n")
 

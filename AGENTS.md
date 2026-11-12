@@ -46,13 +46,17 @@ Every subpackage `__init__.py` imports its submodules purely for the `register_w
 ## Translations
 
 - UI strings are addressed as `t('Section.key')` via `tools/translations.py`. `resources/translations/en_US.json` is canonical; `ja_JP`, `ko_KR`, `zh_CN` must carry the same keys. When changing a string's *meaning*, update all four files; when only rewording English, updating `en_US.json` alone is acceptable.
-- "Download latest translations" (in-app operator) fetches `resources/translations/` and `resources/dictionary.json` through the GitHub contents/raw APIs from a **branch named after the running Blender minor version** (`translation_branch = "5.2"`, `"5.3", ...` in `tools/translations.py`). When you support a new Blender version, create that branch from `cats-latest` so the feature keeps working.
+- "Download latest translations" (in-app operator) fetches `resources/translations/` and `resources/dictionary.json` through the GitHub contents/raw APIs from a **branch named after the running Blender minor version** (`translation_branch = "5.2"`, `"5.3", ...` in `tools/translations.py`). Supporting a new Blender version means that branch exists - it is created at release time (see Branches and Releasing).
 
-## Branches
+## Branches and development workflow
 
-- `cats-latest` - development branch and default branch of this fork.
-- `5.2`, `5.3` - translation branches (content = `cats-latest` at release time).
-- `upstream` - teamneoneko/Cats-Blender-Plugin (read-only for this project).
+- `cats-latest` - mainline and default branch. It must stay releasable at all times: supports exactly the Blender range in the manifest (currently 5.2-5.3), builds into a working zip, lints clean. Fix and feature work for the current supported line lands here (directly or via short-lived `fix/...` / `feat/...` branches cut from it).
+- `5.2`, `5.3` - translation branches, content = `cats-latest` **at release time** (the in-app translation download reads them). Never develop on them; the only writes are fast-forwards to release commits (see Releasing, step 5).
+- Experimental work for a **new Blender version** (e.g. 5.4) goes on a long-lived `feat/blender-<X.Y>` branch cut from `cats-latest` - it does not go on mainline while untested. While such a branch is open:
+  - Do NOT raise `blender_version_max` in the manifest or the guard in `check_unsupported_blender_versions()`, and do NOT create the new translation branch - all three happen at release time so `cats-latest` keeps loading on (and only on) the supported range.
+  - Keep the branch rebased on `cats-latest` so it picks up fixes.
+  - When it is ready: merge into `cats-latest`, then release the new series (`X.Y.0.0`) - the release steps are where the version bump, upper-bound bump, guard bump, and `X.Y` translation branch all land together.
+- `upstream` remote (teamneoneko) is a read-only reference - see Provenance.
 
 ## Gotchas
 

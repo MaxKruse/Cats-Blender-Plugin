@@ -1,28 +1,10 @@
-# Unofficial Cats Blender Plugin
+# Cats Blender Plugin (MaxKruse fork)
 
-[![Static Tests](https://git.neoneko.org/NeoNeko/Cats-Blender-Plugin/badges/workflows/static.yml/badge.svg?branch=main&label=Static%20Tests)](https://git.neoneko.org/NeoNeko/Cats-Blender-Plugin/actions)
-[![Blender 5.2 Tests](https://git.neoneko.org/NeoNeko/Cats-Blender-Plugin/badges/workflows/blender-5.2.yml/badge.svg?branch=main&label=Blender%205.2%20Tests)](https://git.neoneko.org/NeoNeko/Cats-Blender-Plugin/actions)
-[![Latest Release](https://git.neoneko.org/NeoNeko/Cats-Blender-Plugin/badges/release.svg?label=Latest%20Release)](https://git.neoneko.org/NeoNeko/Cats-Blender-Plugin/releases)
+A community fork of [Cats Blender Plugin](https://github.com/teamneoneko/Cats-Blender-Plugin), picked up after the original NeoNeko version was archived at 5.3.1.0. This fork is an independent project maintained by **MaxKruse** - issues and pull requests go to [this repository](https://github.com/MaxKruse/Cats-Blender-Plugin), not to NeoNeko.
 
-## This project is archived
+Cats is a Blender add-on for importing, fixing, optimizing, and exporting avatar models, especially for VRChat-style workflows. It is distributed as a Blender extension (package) for Blender 5.x.
 
-**5.3.1.0 is the final release of Cats.** After twelve years I'm stepping away from VRChat and social VR, and that includes Cats. There will be no further updates, and issues and pull requests are no longer being accepted.
-
-Read more: [Stepping away from VRChat and social VR](https://yusarina.dev/blog/stepping-away-from-vrchat)
-
-**Want to keep Cats going?** The code is on GitHub so it's easy to fork: **[github.com/teamneoneko/Cats-Blender-Plugin](https://github.com/teamneoneko/Cats-Blender-Plugin/)**. It's MIT licensed, so you're free to continue it under your own name.
-
-The [NeoNeko Forgejo](https://git.neoneko.org/NeoNeko/Cats-Blender-Plugin) instance stays online, so the releases, the [wiki](https://git.neoneko.org/NeoNeko/Cats-Blender-Plugin/wiki) and the built-in updater keep working.
-
-Thank you to everyone who used, tested, translated and contributed to Cats.
-
----
-
-Cats is a Blender add-on for importing, fixing, optimizing, and exporting avatar models, especially for VRChat-style workflows. This fork is maintained for modern Blender versions using Blender's extension package system.
-
-The final release supports Blender 5.2 and 5.3. For Blender 5.1, use Cats 5.3.0.1 or earlier.
-
-## Features
+## What it does
 
 - Import helpers for common avatar/model formats, including MMD, XNALara/XPS, Source, FBX, VRM, and glTF/GLB workflows.
 - Export helpers for checked avatar export and Resonite export.
@@ -36,36 +18,76 @@ The final release supports Blender 5.2 and 5.3. For Blender 5.1, use Cats 5.3.0.
 - Built-in texture atlas generator, with optional normal, emission, roughness, metallic, AO and height maps and Cycles baking.
 - Translation tools for bones, shape keys, objects, and materials.
 - Built-in model scaling, finger spreading and scale matching.
-- Built-in updater that checks the NeoNeko Forgejo releases.
+- Built-in updater that checks the releases of this repository.
 - UI translations: English, Japanese, Korean, and Simplified Chinese.
+
+## Blender version support
+
+| Blender | Status |
+|---|---|
+| **5.2 and 5.3** | Supported |
+| **5.1** | Use Cats 5.3.0.1 or earlier (final NeoNeko releases) |
+| **5.4 and newer** | Not supported yet; Cats refuses to load |
 
 ## Install
 
 Use the release zip. Do not unzip it before installing.
 
-1. Download the latest `.zip` from the [Releases page](https://git.neoneko.org/NeoNeko/Cats-Blender-Plugin/releases).
+1. Download the latest `.zip` from the [Releases page](https://github.com/MaxKruse/Cats-Blender-Plugin/releases) (or build one yourself, see [Building](#building)).
 2. Open Blender 5.2 or 5.3.
 3. Go to `Edit > Preferences`.
 4. Open `Get Extensions`.
 5. Use the top-right drop-down menu and choose `Install from Disk`.
-6. Select the downloaded Cats `.zip`.
+6. Select the downloaded zip.
 7. Open `Add-ons`, search for `Cats`, and enable the add-on if Blender did not enable it automatically.
 8. In the 3D Viewport, press `N` to open the sidebar and use the `CATS` tab.
 
-Blender also exposes extension package installation through `Preferences > Add-ons > Install from Disk`; either path is fine as long as you select the release zip.
+Blender also exposes extension installation through `Preferences > Add-ons > Install from Disk`; either path is fine as long as you select the release zip.
 
-## Update
+Requirements:
 
-5.3.1.0 is the final release, so there are no further updates to install. The Cats updater panel inside Blender still lists the existing releases, and Blender only installs a release that supports your Blender version.
+- Blender from the [official Blender website](https://www.blender.org/download/) or Steam.
+- Windows Store Blender is not supported (known permission issues).
+- On Linux, package-manager, Snap and Flatpak builds of Blender are not supported.
 
-## Compatibility
+Material Combiner and Immersive Scaler are not needed. Cats has its own built-in atlas generator and scaler.
 
-- Blender 5.2 and 5.3: supported by the final release (5.3.1.0).
-- Blender 5.1: use Cats 5.3.0.1 or earlier from the [Releases page](https://git.neoneko.org/NeoNeko/Cats-Blender-Plugin/releases).
-- Blender 5.0 and older: use an older release made for that Blender version.
+## Updating
 
-Newer Blender versions (5.4 and later) are not supported. Cats refuses to load on them; a fork would be needed to add support.
+The updater panel in the `CATS` sidebar (`Settings & Updates`) checks the [releases of this repository](https://github.com/MaxKruse/Cats-Blender-Plugin/releases) and installs the newest release that supports your Blender version. Blender only installs a release whose manifest declares compatibility.
+
+## Building
+
+The repository is the extension source. To build a loadable zip:
+
+1. Check out this repository.
+2. Zip the repository contents (without `.git`) into a single top-level folder, e.g.:
+   `maxkruse_cats/blender_manifest.toml`, `maxkruse_cats/__init__.py`, ...
+3. Do not extract the zip before installing it in Blender.
+
+`scripts/vendor_mmd_tools.py <version>` vendors a release of
+[MMD Tools](https://github.com/MMD-Blender/blender_mmd_tools) into
+`mmd_tools_local/` and lifts its `opencc` wheel into `wheels/`. After running it,
+verify that the `wheels` list in `blender_manifest.toml` still matches the wheel on disk.
+
+## Forking / contributing
+
+- The development branch is `cats-latest`.
+- Per-Blender-version branches (`5.2`, `5.3`, ...) exist so the in-app "download latest translations" feature can fetch `resources/translations/` and `resources/dictionary.json` for the running Blender version. When supporting a new Blender version, branch it off `cats-latest`.
+- `CATS_VERSION` in `__init__.py` must stay in sync with `version` in `blender_manifest.toml`.
+- See [AGENTS.md](AGENTS.md) for architecture notes aimed at contributors and AI agents.
 
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+## Credits
+
+Cats Blender Plugin was originally developed by **Absolute Quantum**
+([original project](https://github.com/absolute-quantum/cats-blender-plugin)) and then maintained and expanded by community contributors, most recently by **NeoNeko (Yusarina)** as the unofficial NeoNeko continuation, which is archived at 5.3.1.0. Thanks to all of them: this fork builds directly on that work.
+
+Third-party projects Cats includes or builds on:
+
+- [MMD Tools](https://github.com/MMD-Blender/blender_mmd_tools), bundled with Cats
+- [Immersive Scaler](https://github.com/teamneoneko/immersive_scaler), whose scaling tools were ported into Cats
+- [Material Combiner](https://github.com/Grim-es/material-combiner-addon), which earlier versions of Cats used for atlassing

@@ -407,6 +407,8 @@ class FixArmature(bpy.types.Operator):
         # Tag every bone with its current name so we can report exactly what got
         # renamed or removed. Downstream tools bind to bones by name, so users need
         # to know which references they have to rebind after a fix.
+        # The tag must be removed with Common.clear_bone_identity_snapshot(armature)
+        # before every return below, so it never reaches the file or an export.
         bone_name_snapshot = Common.snapshot_bone_identities(armature)
 
         # Check if this is an MMD model
@@ -431,6 +433,7 @@ class FixArmature(bpy.types.Operator):
                                     t('JoinMeshes.error.make_single_user'),
                                     t('JoinMeshes.error.make_single_user1'),
                                     t('JoinMeshes.error.make_single_user2')])
+                Common.clear_bone_identity_snapshot(armature)
                 return {'CANCELLED'}
 
         is_vrm = False
@@ -444,6 +447,7 @@ class FixArmature(bpy.types.Operator):
                     break
             if not is_vrm:
                 Common.show_error(3.8, t('FixArmature.error.noMesh'))
+                Common.clear_bone_identity_snapshot(armature)
                 return {'CANCELLED'}
 
         print('\nFixing Model:\n')

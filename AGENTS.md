@@ -77,3 +77,21 @@ uvx ruff check .
 1. Make sure the working tree is clean and `CATS_VERSION` == manifest `version` + `.0`.
 2. Stage the tracked files (e.g. `git archive`) into a single top-level folder named after the manifest id (`maxkruse_cats/`), including `wheels/` and `blender_manifest.toml`.
 3. Zip that folder. Users install the zip directly (no extracting) via `Preferences > Get Extensions > Install from Disk`.
+
+## Releasing
+
+Releases are GitHub releases on **this** repo: annotated tag + release + zip asset. The in-app updater reads `tag_name`, `body`, `published_at` from the releases API and installs from the release's `zipball_url` (the repo tree at the tagged commit) - the uploaded asset exists only for manual downloads. So the tag must point at the exact commit that was built and tested.
+
+1. Bump the version in **both** places and commit: `version` in `blender_manifest.toml` (e.g. `5.3.3`) and `CATS_VERSION` in `__init__.py` (e.g. `5.3.3.0` - always the manifest version plus `.0`).
+2. Build the zip (above) → `dist/maxkruse_cats-<X.Y.Z.W>.zip`.
+3. Annotated tag with the full four-part version (the updater compares dotted ints, so three-part tags sort wrong):
+   `git tag -a <X.Y.Z.W> -m "<X.Y.Z.W> - <summary>" && git push origin <X.Y.Z.W>`
+   Include the `Signed-by: omp (<provider> <model>)` trailer in the tag message.
+4. Create the release:
+   `gh release create <X.Y.Z.W> --repo MaxKruse/Cats-Blender-Plugin --title "<X.Y.Z.W>" --target cats-latest --notes "<what changed>" dist/maxkruse_cats-<X.Y.Z.W>.zip`
+   - `--repo` is mandatory: in this clone `gh` resolves the default repo from the `upstream` remote (the archived teamneoneko repo) and the create fails with a 404.
+5. Fast-forward the translation branches to the release commit so in-app "download latest translations" serves the new strings:
+   `git push origin <X.Y.Z.W>:refs/heads/5.2 <X.Y.Z.W>:refs/heads/5.3`
+6. Verify: `gh api repos/MaxKruse/Cats-Blender-Plugin/releases` shows the release with `tag_name`, `zipball_url`, `published_at` and the zip asset.
+
+Version scheme: `.W` patches are fixes (`5.3.2.1`), `.Z` minors are features (`5.3.3.0`). Adding support for a new Blender version is a new series (`5.4.0.0`) and additionally requires raising `blender_version_max` in the manifest, the guard in `check_unsupported_blender_versions()` in `__init__.py`, testing on that Blender, and creating the matching translation branch (e.g. `5.4`) at release time.

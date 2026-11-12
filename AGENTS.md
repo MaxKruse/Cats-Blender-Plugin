@@ -97,7 +97,8 @@ Releases are GitHub releases on **this** repo: annotated tag + release + zip ass
    `gh release create <X.Y.Z.W> --repo MaxKruse/Cats-Blender-Plugin --title "<X.Y.Z.W>" --target cats-latest --notes "<what changed>" dist/maxkruse_cats-<X.Y.Z.W>.zip`
    - `--repo` is mandatory: in this clone `gh` resolves the default repo from the `upstream` remote (the archived teamneoneko repo) and the create fails with a 404.
 5. Fast-forward the translation branches to the release commit so in-app "download latest translations" serves the new strings:
-   `git push origin <X.Y.Z.W>:refs/heads/5.2 <X.Y.Z.W>:refs/heads/5.3`
+   `git push origin <X.Y.Z.W>^{commit}:refs/heads/5.2 <X.Y.Z.W>^{commit}:refs/heads/5.3`
+   Push the peeled commit, not the tag object: GitHub rejects an annotated tag object on a branch ref (the push client may still print an update line, but the ref does not move).
 6. Verify: `gh api repos/MaxKruse/Cats-Blender-Plugin/releases` shows the release with `tag_name`, `zipball_url`, `published_at` and the zip asset.
 
 Version scheme: `.W` patches are fixes (`5.3.2.1`), `.Z` minors are features (`5.3.3.0`). Adding support for a new Blender version is a new series (`5.4.0.0`) and additionally requires raising `blender_version_max` in the manifest, the guard in `check_unsupported_blender_versions()` in `__init__.py`, testing on that Blender, and creating the matching translation branch (e.g. `5.4`) at release time.
